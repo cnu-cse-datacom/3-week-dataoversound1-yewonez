@@ -13,14 +13,14 @@ from reedsolo import RSCodec, ReedSolomonError
 from termcolor import cprint
 from pyfiglet import figlet_format
 
-HANDSHAKE_START_HZ = 1024   
-HANDSHAKE_END_HZ = 1024 + 512  
+HANDSHAKE_START_HZ = 1024 
+HANDSHAKE_END_HZ = 1024 + 512 
 
 START_HZ = 1024
-STEP_HZ = 256
-BITS = 4
+STEP_HZ = 256 
+BITS = 4 
 
-FEC_BYTES = 4
+FEC_BYTES =4 
 
 def stereo_to_mono(input_file, output_file):
     inp = wave.open(input_file, 'r')
@@ -55,16 +55,11 @@ def yield_chunks(input_file, interval):
         yield frame_rate, np.fromstring(chunk, dtype=np.int16)
 
 def dominant(frame_rate, chunk):
-    #print("chunk",chunk)
     w = np.fft.fft(chunk)
-    #print("w:",w)
     freqs = np.fft.fftfreq(len(chunk))
-    #print("freqs:",freqs)
     peak_coeff = np.argmax(np.abs(w))
-    #print("peak_coeff:",peak_coeff)
     peak_freq = freqs[peak_coeff]
-    #print("peak_freq",peak_freq)
-    #print(abs(peak_freq * frame_rate))
+#   print(abs(peak_freq * frame_rate))
     return abs(peak_freq * frame_rate) # in Hz
 
 def match(freq1, freq2):
@@ -80,21 +75,13 @@ def decode_bitchunks(chunk_bits, chunks):
     bits_left = 8
     while next_read_chunk < len(chunks):
         can_fill = chunk_bits - next_read_bit
-        #print("can:",can_fill)
         to_fill = min(bits_left, can_fill)
-        #print("to:",to_fill)
         offset = chunk_bits - next_read_bit - to_fill
-        #print("offset:",offset)
         byte <<= to_fill
-        #print("byte:",byte)
         shifted = chunks[next_read_chunk] & (((1 << to_fill) - 1) << offset)
-        #print("shifted:",shifted)
         byte |= shifted >> offset;
-        #print("byte",byte)
         bits_left -= to_fill
-        #print("bits_left:",bits_left)
         next_read_bit += to_fill
-        #print("next_read:",next_read_bit)
         if bits_left <= 0:
 
             out_bytes.append(byte)
@@ -104,7 +91,6 @@ def decode_bitchunks(chunk_bits, chunks):
         if next_read_bit >= chunk_bits:
             next_read_chunk += 1
             next_read_bit -= chunk_bits
-    #print(out_bytes)
 
     return out_bytes
 
@@ -135,7 +121,7 @@ def display(s):
 
 def listen_linux(frame_rate=44100, interval=0.1):
 
-    mic = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL)
+    mic = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, device="hw:1")
     mic.setchannels(1)
     mic.setrate(44100)
     mic.setformat(alsaaudio.PCM_FORMAT_S16_LE)
@@ -157,15 +143,15 @@ def listen_linux(frame_rate=44100, interval=0.1):
 
         if in_packet and match(dom, HANDSHAKE_END_HZ):
             byte_stream = extract_packet(packet)
-            print("original code",byte_stream)
-
             try:
                 byte_stream = RSCodec(FEC_BYTES).decode(byte_stream)
                 byte_stream = byte_stream.decode("utf-8")
+
                 display(byte_stream)
-                display("")
             except ReedSolomonError as e:
-                print("{}: {}".format(e, byte_stream))
+                pass
+                #print("{}: {}".format(e, byte_stream))
+
             packet = []
             in_packet = False
         elif in_packet:
